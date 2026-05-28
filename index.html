@@ -1,23 +1,24 @@
 <!DOCTYPE html>
-<html lang="ja">    
-<head>    
-    <meta charset="UTF-8">    
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">    
-    <title>SenninChat - メイン</title>    
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">    
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">    
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SenninChat - メイン</title>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     
-    <style>    
-        :root {    
-            --bg-main: #ffffff;    
-            --bg-sidebar: #f0f4f9;    
-            --bg-hover: #e1e5ea;    
-            --bg-active: #d3e3fd;    
-            --text-main: #1f1f1f;    
-            --text-sub: #5e5e5e;    
-            --brand-color: #0b57d0;    
-            --border-color: #c7c7c7;    
+    <style>
+        :root {
+            --bg-main: #ffffff;
+            --bg-sidebar: #f0f4f9;
+            --bg-hover: #e1e5ea;
+            --bg-active: #d3e3fd;
+            --text-main: #1f1f1f;
+            --text-sub: #5e5e5e;
+            --brand-color: #0b57d0;
+            --border-color: #c7c7c7;
         }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -28,6 +29,7 @@
         body {
             display: flex;
             height: 100vh;
+            height: 100dvh; /* 動的ビューポート対応でキーボード表示時の縮小に追従 */
             background-color: var(--bg-main);
             color: var(--text-main);
             overflow: hidden;
@@ -43,39 +45,17 @@
             border-right: 1px solid rgba(0,0,0,0.05);
             padding: 8px;
             flex-shrink: 0;
+            transition: transform 0.3s ease, width 0.3s ease;
         }
 
         .logo-area {
             display: flex;
             align-items: center;
-            justify-content: space-between;
             padding: 12px 8px;
             font-size: 1.2rem;
             font-weight: 500;
             color: var(--text-main);
             gap: 8px;
-        }
-
-        .logo-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* アクション用のプラスボタン */
-        .btn-add-action {
-            background: none;
-            border: none;
-            color: var(--brand-color);
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .btn-add-action:hover {
-            background-color: var(--bg-hover);
         }
 
         .user-info-box {
@@ -94,6 +74,31 @@
             word-break: break-all;
             margin-top: 4px;
             display: block;
+        }
+
+        .friend-add-box {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 16px;
+        }
+
+        .friend-add-box input {
+            flex: 1;
+            padding: 6px 10px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            font-size: 0.8rem;
+            outline: none;
+        }
+
+        .friend-add-box button {
+            background-color: var(--brand-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 0.8rem;
+            cursor: pointer;
         }
 
         .menu-section {
@@ -127,6 +132,7 @@
             font-size: 0.85rem;
             color: #444746;
             margin-bottom: 2px;
+            position: relative;
         }
 
         .chat-item:hover {
@@ -153,12 +159,31 @@
             flex-shrink: 0;
         }
 
+        /* --- 通知バッジのスタイル --- */
+        .badge {
+            background-color: #b3261e;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: auto; /* 右端に寄せる */
+            flex-shrink: 0;
+        }
+
         /* --- 中央メインエリア --- */
         .main-content {
             flex: 1;
             display: flex;
             flex-direction: column;
             background-color: var(--bg-main);
+            height: 100%;
+            min-width: 0; /* フレックスアイテムの縮小を許可 */
         }
 
         .main-header {
@@ -168,6 +193,7 @@
             align-items: center;
             justify-content: space-between;
             padding: 0 24px;
+            flex-shrink: 0;
         }
 
         .header-left {
@@ -203,7 +229,6 @@
             gap: 12px;
             width: 100%;
             max-width: 85%;
-            position: relative;
         }
 
         .message-group.received {
@@ -260,14 +285,6 @@
             color: var(--text-sub);
         }
 
-        /* 既読バッジのデザイン */
-        .msg-read-status {
-            font-size: 0.7rem;
-            color: var(--brand-color);
-            font-weight: bold;
-            margin: 0 4px;
-        }
-
         .msg-text {
             font-size: 0.95rem;
             line-height: 1.45;
@@ -276,7 +293,6 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
             word-break: break-all;
             white-space: pre-wrap;
-            position: relative;
         }
 
         .message-group.received .msg-text {
@@ -290,16 +306,6 @@
             background-color: var(--brand-color);
             color: #ffffff;
             border-top-right-radius: 4px;
-            cursor: pointer; /* 送信取り消し可能であることを示す */
-        }
-
-        /* 送信取り消しメッセージのデザイン */
-        .msg-text.unsend-style {
-            background-color: #e8eaed !important;
-            color: #9aa0a6 !important;
-            font-style: italic;
-            border: 1px dashed #c7c7c7 !important;
-            box-shadow: none;
         }
 
         .msg-actions {
@@ -329,6 +335,7 @@
         .input-container {
             padding: 0 24px 24px 24px;
             background-color: #f8f9fa;
+            flex-shrink: 0; /* 入力エリアが潰れるのを絶対に防ぐ */
         }
 
         .input-box {
@@ -354,7 +361,7 @@
             font-size: 0.95rem;
             padding: 8px 4px;
             min-height: 40px;
-            max-height: 200px;
+            max-height: 140px; /* モバイルでの表示領域確保のため最大高さを微調整 */
         }
 
         .input-toolbar {
@@ -423,157 +430,84 @@
             transition: opacity 0.3s;
             z-index: 999;
         }
+        
         .toast.show {
             opacity: 1;
         }
 
-        /* --- モーダルダイアログ（共通設計） --- */
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.4);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        .modal-box {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 16px;
-            width: 320px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .modal-header-text {
-            font-size: 1rem;
-            font-weight: 600;
-        }
-        .modal-box input[type="text"] {
-            width: 100%;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            outline: none;
-        }
-        .modal-box .member-select-list {
-            max-height: 120px;
-            overflow-y: auto;
-            list-style: none;
-            border: 1px solid #eee;
-            padding: 4px;
-            border-radius: 8px;
-        }
-        .modal-box .member-select-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.85rem;
-            padding: 4px;
-        }
-        .modal-buttons {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-        }
-        .modal-buttons button {
-            padding: 6px 12px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
-        .btn-confirm { background-color: var(--brand-color); color: white; }
-        .btn-cancel { background-color: #e0e0e0; color: #333; }
-
-        /* コンテキストメニュー（送信取り消し用） */
-        .context-menu {
-            position: absolute;
-            background: white;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            border-radius: 8px;
-            padding: 4px 0;
-            display: none;
-            z-index: 1010;
-        }
-        .context-menu-item {
-            padding: 8px 16px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            color: #d93025;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .context-menu-item:hover {
-            background-color: #f1f3f4;
+        /* --- 画面幅が狭いデバイス（スマートフォンなど）用のレスポンス設定 --- */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 72px; /* アイコン表示メインのコンパクト幅に */
+                padding: 8px 4px;
+            }
+            .logo-area span,
+            .user-info-box,
+            .friend-add-box,
+            .section-title,
+            .chat-item span {
+                display: none !important; /* テキスト表記や入力欄を隠して省スペース化 */
+            }
+            .logo-area {
+                justify-content: center;
+                padding: 12px 0;
+            }
+            .chat-item {
+                padding: 10px 0;
+                justify-content: center;
+                border-radius: 50%;
+                width: 48px;
+                height: 48px;
+                margin: 0 auto 8px auto;
+            }
+            .avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 0.9rem;
+            }
+            .badge {
+                position: absolute;
+                top: 2px;
+                right: 2px;
+                margin-left: 0;
+                min-width: 16px;
+                height: 16px;
+                font-size: 0.65rem;
+            }
+            .main-header {
+                padding: 0 16px;
+            }
+            .message-area {
+                padding: 16px;
+            }
+            .message-group {
+                max-width: 95%;
+            }
+            .input-container {
+                padding: 0 12px 12px 12px;
+            }
         }
     </style>
-</head>    
-<body>    
+</head>
+<body>
+
     <div id="toast" class="toast">アクションが実行されました</div>
-
-    <div id="actionModal" class="modal-overlay" onclick="closeModal('actionModal')">
-        <div class="modal-box" onclick="event.stopPropagation()">
-            <div class="modal-header-text">チャットアクション</div>
-            <button class="btn-confirm" style="padding: 10px; border-radius: 8px;" onclick="openFriendModal()">友達を追加する</button>
-            <button class="btn-confirm" style="padding: 10px; border-radius: 8px; background-color: #1f8737;" onclick="openGroupModal()">グループを作成する</button>
-            <div class="modal-buttons">
-                <button class="btn-cancel" onclick="closeModal('actionModal')">閉じる</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="friendModal" class="modal-overlay" onclick="closeModal('friendModal')">
-        <div class="modal-box" onclick="event.stopPropagation()">
-            <div class="modal-header-text">友達の追加</div>
-            <input type="text" id="friendIdInput" placeholder="友達の固有IDを入力">
-            <div class="modal-buttons">
-                <button class="btn-cancel" onclick="closeModal('friendModal')">キャンセル</button>
-                <button class="btn-confirm" onclick="addFriend()">追加</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="groupModal" class="modal-overlay" onclick="closeModal('groupModal')">
-        <div class="modal-box" onclick="event.stopPropagation()">
-            <div class="modal-header-text">グループチャットの作成</div>
-            <input type="text" id="groupNameInput" placeholder="グループ名を入力">
-            <div style="font-size: 0.75rem; color: var(--text-sub);">追加するフレンドを選択:</div>
-            <ul class="member-select-list" id="memberSelectList">
-                </ul>
-            <div class="modal-buttons">
-                <button class="btn-cancel" onclick="closeModal('groupModal')">キャンセル</button>
-                <button class="btn-confirm" onclick="createGroup()">作成</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="msgContextMenu" class="context-menu">
-        <div class="context-menu-item" id="contextUnsendBtn">
-            <i class="material-icons-outlined" style="font-size: 16px;">delete</i>
-            <span>送信を取り消す</span>
-        </div>
-    </div>
 
     <div class="sidebar">
         <div class="logo-area">
-            <div class="logo-title">
-                <i class="material-icons-outlined" style="color:#0b57d0">chat</i>
-                <span>SenninChat</span>
-            </div>
-            <button class="btn-add-action" onclick="openActionModal()" title="追加・作成">
-                <i class="material-icons-outlined">add_circle_outline</i>
-            </button>
+            <i class="material-icons-outlined" style="color:#0b57d0">chat</i>
+            <span>SenninChat</span>
         </div>
 
         <div class="user-info-box">
             <div>ログインユーザー: <strong id="myUsername">...</strong></div>
             <div>あなたの固有ID (クリックでコピー):</div>
             <span class="user-id-display" id="myUserId" onclick="copyMyId()">...</span>
+        </div>
+
+        <div class="friend-add-box">
+            <input type="text" id="friendIdInput" placeholder="友達の固有IDを入力">
+            <button onclick="addFriend()">追加</button>
         </div>
 
         <div class="menu-section">
@@ -595,7 +529,7 @@
 
         <div class="message-area" id="messageArea">
             <div style="text-align:center; padding-top:40px; color:var(--text-sub);">
-                左側のリストからフレンドまたはグループを選択してチャットを開始してください。
+                左側のリストからフレンドを選択してチャットを開始してください。
             </div>
         </div>
 
@@ -640,10 +574,10 @@
         let currentChannelName = '';
         let currentChannelColor = '#74c0fc';
         let currentFriendId = '';
-        let currentGroupId = ''; // グループ管理用変数を拡張
         let currentRoomId = '';
-        let globalFriendsList = []; // グループ作成画面同期用
-        let activeSelectedMenuMessageId = null; // 送信取り消し対象IDの一時保持用
+
+        // 各フレンドの未読件数を管理するオブジェクト
+        const unreadCounts = {};
 
         function showToast(message) {
             toast.textContent = message;
@@ -656,119 +590,41 @@
             showToast("固有IDをクリップボードにコピーしました");
         }
 
-        // --- モーダル開閉制御群 ---
-        function openActionModal() { document.getElementById('actionModal').style.display = 'flex'; }
-        function openFriendModal() { closeModal('actionModal'); document.getElementById('friendModal').style.display = 'flex'; }
-        function openGroupModal() { 
-            closeModal('actionModal'); 
-            document.getElementById('groupModal').style.display = 'flex'; 
-            renderGroupMemberSelection();
-        }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-        // グループ作成用チェックボックスリストの描画
-        function renderGroupMemberSelection() {
-            const listEl = document.getElementById('memberSelectList');
-            listEl.innerHTML = '';
-            if (globalFriendsList.length === 0) {
-                listEl.innerHTML = '<li style="font-size:0.8rem; color:var(--text-sub); padding:4px;">選択可能なフレンドがいません</li>';
-                return;
-            }
-            globalFriendsList.forEach(f => {
-                const li = document.createElement('li');
-                li.classList.add('member-select-item');
-                li.innerHTML = `<input type="checkbox" value="${f.user_id}" id="chk_${f.user_id}"> <label for="chk_${f.user_id}">${f.username}</label>`;
-                listEl.appendChild(li);
-            });
-        }
-
-        // グループ作成処理
-        async function createGroup() {
-            const nameInput = document.getElementById('groupNameInput');
-            const groupName = nameInput.value.trim();
-            if (!groupName) { showToast("グループ名を入力してください"); return; }
-
-            const memberIds = [currentUser.userId]; // 作成者本人を初期追加
-            globalFriendsList.forEach(f => {
-                const chk = document.getElementById(`chk_${f.user_id}`);
-                if (chk && chk.checked) {
-                    memberIds.push(f.user_id);
-                }
-            });
-
-            try {
-                const res = await fetch('/api/groups/create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ groupName, memberIds })
-                });
-                const data = await res.json();
-                showToast(data.message);
-                if (data.success) {
-                    nameInput.value = '';
-                    closeModal('groupModal');
-                    loadFriends(); // リスト構造の再読み込み
-                }
-            } catch(err) {
-                showToast("グループ作成に失敗しました");
-            }
-        }
-
-        // フレンド一覧およびグループ一覧を包括的にロードして結合表示
+        // フレンド一覧読み込み
         async function loadFriends() {
             try {
-                // 1. フレンド一覧の取得
-                const friendRes = await fetch(`/api/friends?userId=${currentUser.userId}`);
-                const friendData = await friendRes.json();
-                
-                // 2. グループ一覧の取得
-                const groupRes = await fetch(`/api/groups?userId=${currentUser.userId}`);
-                const groupData = await groupRes.json();
-
-                chatList.innerHTML = '';
-                globalFriendsList = friendData.success ? friendData.friends : [];
-
-                let hasAnyChat = false;
-
-                // グループアイテムの描画
-                if (groupData.success && groupData.groups.length > 0) {
-                    hasAnyChat = true;
-                    groupData.groups.forEach((g) => {
-                        const initial = 'G';
-                        const color = '#1f8737'; // グループは緑系に固定色
-
-                        const li = document.createElement('li');
-                        li.classList.add('chat-item');
-                        if (currentGroupId === g.group_id) li.classList.add('active');
-                        li.onclick = function() { switchChannel(this, g.group_name, initial, color, '', g.group_id); };
-                        li.innerHTML = `<div class="avatar" style="background-color: ${color}; color: white;">${initial}</div> <span>${g.group_name} (グループ)</span>`;
-                        chatList.appendChild(li);
-                    });
-                }
-
-                // 一対一フレンドアイテムの描画
-                if (friendData.success && friendData.friends.length > 0) {
-                    hasAnyChat = true;
-                    friendData.friends.forEach((f, idx) => {
+                const res = await fetch(`/api/friends?userId=${currentUser.userId}`);
+                const data = await res.json();
+                if (data.success) {
+                    chatList.innerHTML = '';
+                    if(data.friends.length === 0) {
+                        chatList.innerHTML = '<li style="font-size:0.8rem; padding:8px; color:var(--text-sub);">フレンドがいません</li>';
+                    }
+                    data.friends.forEach((f, idx) => {
                         const initial = f.username.charAt(0).toUpperCase();
                         const colors = ['#74c0fc', '#e2c5ff', '#fcdebc', '#b2f2bb', '#ffc9c9'];
                         const color = colors[idx % colors.length];
 
                         const li = document.createElement('li');
                         li.classList.add('chat-item');
-                        if (!currentGroupId && currentChannelName === f.username) li.classList.add('active');
-                        li.onclick = function() { switchChannel(this, f.username, initial, color, f.user_id, ''); };
-                        li.innerHTML = `<div class="avatar" style="background-color: ${color};">${initial}</div> <span>${f.username}</span>`;
+                        li.setAttribute('data-friend-id', f.user_id); // ID特定用のカスタム属性
+                        if (currentChannelName === f.username) li.classList.add('active');
+                        li.onclick = function() { switchChannel(this, f.username, initial, color, f.user_id); };
+                        
+                        // 通知数を初期描画
+                        const badgeCount = unreadCounts[f.user_id] || 0;
+                        const badgeHtml = badgeCount > 0 ? `<div class="badge">${badgeCount}</div>` : '';
+
+                        li.innerHTML = `
+                            <div class="avatar" style="background-color: ${color};">${initial}</div>
+                            <span>${f.username}</span>
+                            ${badgeHtml}
+                        `;
                         chatList.appendChild(li);
                     });
                 }
-
-                if (!hasAnyChat) {
-                    chatList.innerHTML = '<li style="font-size:0.8rem; padding:8px; color:var(--text-sub);">チャット相手、またはグループがありません</li>';
-                }
-
             } catch (err) {
-                console.error("リスト取得失敗", err);
+                console.error("フレンドリスト取得失敗", err);
             }
         }
 
@@ -788,7 +644,6 @@
                 showToast(data.message);
                 if(data.success) {
                     friendIdInput.value = '';
-                    closeModal('friendModal');
                     loadFriends();
                 }
             } catch(err) {
@@ -802,58 +657,39 @@
             chatInput.style.height = chatInput.scrollHeight + 'px';
         });
 
-        // メッセージDOM構築ロジック
         function appendMessageElement(data) {
             const msgGroup = document.createElement('div');
             msgGroup.classList.add('message-group');
-            msgGroup.setAttribute('data-msg-id', data.id);
             
-            // 既読状態用文字列の構築
-            let readBadgeHTML = '';
-            if (!data.is_deleted) {
-                if (currentGroupId) {
-                    // グループの場合は「既読 X」と表示
-                    readBadgeHTML = data.read_count > 1 ? `<span class="msg-read-status">既読 ${data.read_count - 1}</span>` : '';
-                } else {
-                    // 1対1の場合は「既読」と表示
-                    readBadgeHTML = data.read_count > 1 ? `<span class="msg-read-status">既読</span>` : '';
-                }
-            }
-
-            // 取り消し判定テキスト処理
-            const messageBodyText = data.is_deleted ? 'メッセージの送信を取り消しました' : escapeHTML(data.text);
-            const textClass = data.is_deleted ? 'msg-text unsend-style' : 'msg-text';
-
             if (data.name === currentUser.username) {
                 msgGroup.classList.add('sent');
                 msgGroup.innerHTML = `
-                    <div class="msg-avatar" style="background-color: var(--brand-color);">自分</div>     
-                    <div class="msg-body">     
-                        <div class="msg-header">     
-                            <span class="msg-name">あなた</span>     
-                            <span class="msg-time">${data.timestamp}</span>     
-                            ${readBadgeHTML}
-                        </div>     
-                        <div class="${textClass}" oncontextmenu="handleSentMsgContextMenu(event, ${data.id}, ${data.is_deleted})">${messageBodyText}</div>     
-                        <div class="msg-actions">     
-                            <div class="reaction-badge" onclick="toggleReaction(this)">👏 <span>0</span></div>     
-                        </div>     
-                    </div>     
+                    <div class="msg-avatar" style="background-color: var(--brand-color);">自分</div>
+                    <div class="msg-body">
+                        <div class="msg-header">
+                            <span class="msg-name">あなた</span>
+                            <span class="msg-time">${data.timestamp}</span>
+                        </div>
+                        <div class="msg-text">${escapeHTML(data.text)}</div>
+                        <div class="msg-actions">
+                            <div class="reaction-badge" onclick="toggleReaction(this)">👏 <span>0</span></div>
+                        </div>
+                    </div>
                 `;
             } else {
                 msgGroup.classList.add('received');
                 msgGroup.innerHTML = `
-                    <div class="msg-avatar" style="background-color: ${data.color};">${data.avatar}</div>     
-                    <div class="msg-body">     
-                        <div class="msg-header">     
-                            <span class="msg-name">${data.name}</span>     
-                            <span class="msg-time">${data.timestamp}</span>     
-                        </div>     
-                        <div class="${textClass}">${messageBodyText}</div>     
-                        <div class="msg-actions">     
-                            <div class="reaction-badge" onclick="toggleReaction(this)">👍 <span>0</span></div>     
-                        </div>     
-                    </div>     
+                    <div class="msg-avatar" style="background-color: ${data.color};">${data.avatar}</div>
+                    <div class="msg-body">
+                        <div class="msg-header">
+                            <span class="msg-name">${data.name}</span>
+                            <span class="msg-time">${data.timestamp}</span>
+                        </div>
+                        <div class="msg-text">${escapeHTML(data.text)}</div>
+                        <div class="msg-actions">
+                            <div class="reaction-badge" onclick="toggleReaction(this)">👍 <span>0</span></div>
+                        </div>
+                    </div>
                 `;
             }
             
@@ -861,72 +697,21 @@
             messageArea.scrollTop = messageArea.scrollHeight;
         }
 
-        // 送信メッセージ上でのコンテキストメニュー呼び出し（取り消し用）
-        function handleSentMsgContextMenu(e, msgId, isDeleted) {
-            if (isDeleted) return; // 既に取り消されていれば何もしない
-            e.preventDefault();
-            activeSelectedMenuMessageId = msgId;
-            const menu = document.getElementById('msgContextMenu');
-            menu.style.display = 'block';
-            menu.style.left = e.pageX + 'px';
-            menu.style.top = e.pageY + 'px';
-        }
-
-        // メニュー外クリックで閉じる処理
-        document.addEventListener('click', () => {
-            document.getElementById('msgContextMenu').style.display = 'none';
-        });
-
-        // 送信取り消し実行イベントリスナー
-        document.getElementById('contextUnsendBtn').addEventListener('click', () => {
-            if (activeSelectedMenuMessageId && currentRoomId) {
-                socket.emit('unsend_message', {
-                    messageId: activeSelectedMenuMessageId,
-                    roomId: currentRoomId
-                });
-            }
-        });
-
-        // サーバーからの送信取り消し通知の受信
-        socket.on('message_unsend_success', (data) => {
-            const targetNode = document.querySelector(`[data-msg-id="${data.messageId}"] .msg-text`);
-            if (targetNode) {
-                targetNode.textContent = 'メッセージの送信を取り消しました';
-                targetNode.classList.add('unsend-style');
-                // 既読バッジがヘッダーにあれば削除
-                const headerNode = targetNode.parentNode.querySelector('.msg-header .msg-read-status');
-                if (headerNode) headerNode.remove();
-            }
-        });
-
-        // 既読ステータス変更時のイベント処理
-        socket.on('messages_read_update', (data) => {
-            if (data.roomId === currentRoomId) {
-                // ルーム情報がアクティブなら履歴をサイレント再ロード
-                socket.emit('join_channel', {
-                    myId: currentUser.userId,
-                    myName: currentUser.username,
-                    friendId: currentFriendId,
-                    groupId: currentGroupId
-                });
-            }
-        });
-
         socket.on('load_history', (rows) => {
             messageArea.innerHTML = '';
             if (rows.length === 0) {
                 const initialAvatar = currentChannelName.charAt(0).toUpperCase();
                 messageArea.innerHTML = `
-                    <div class="message-group received">     
-                        <div class="msg-avatar" style="background-color: ${currentChannelColor};">${initialAvatar}</div>     
-                        <div class="msg-body">     
-                            <div class="msg-header">     
-                                <span class="msg-name">${currentChannelName}</span>     
-                                <span class="msg-time">新しいスレッド</span>     
-                            </div>     
-                            <div class="msg-text">これは ${currentChannelName} とのトークスペースの最上部です。</div>     
-                        </div>     
-                    </div>     
+                    <div class="message-group received">
+                        <div class="msg-avatar" style="background-color: ${currentChannelColor};">${initialAvatar}</div>
+                        <div class="msg-body">
+                            <div class="msg-header">
+                                <span class="msg-name">${currentChannelName}</span>
+                                <span class="msg-time">新しいスレッド</span>
+                            </div>
+                            <div class="msg-text">これは ${currentChannelName} とのトークスペースの最上部です。</div>
+                        </div>
+                    </div>
                 `;
             } else {
                 rows.forEach(row => {
@@ -935,30 +720,55 @@
             }
         });
 
+        // メッセージ受信時の処理をアップデート
         socket.on('receive_message', (msgData) => {
             if (msgData.channel === currentRoomId) {
                 appendMessageElement(msgData);
-                // 自分が開いている部屋にメッセージが届いたら自動的に既読判定を返す
-                if (msgData.name !== currentUser.username) {
-                    socket.emit('mark_as_read', { roomId: currentRoomId, userId: currentUser.userId });
+            } else {
+                // 開いていないチャットルームからの新着通知（送信者が自分以外の場合のみカウントアップ）
+                if (msgData.myId !== currentUser.userId) {
+                    updateUnreadCount(msgData.myId, 1);
                 }
             }
         });
 
+        // 未読数を変更・更新する関数
+        function updateUnreadCount(friendId, amount) {
+            if (amount === 0) {
+                unreadCounts[friendId] = 0;
+            } else {
+                unreadCounts[friendId] = (unreadCounts[friendId] || 0) + amount;
+            }
+
+            // 対応するリストアイテムのDOMを取得してバッジ書き換え
+            const item = document.querySelector(`.chat-item[data-friend-id="${friendId}"]`);
+            if (item) {
+                let badge = item.querySelector('.badge');
+                if (unreadCounts[friendId] > 0) {
+                    if (!badge) {
+                        badge = document.createElement('div');
+                        badge.classList.add('badge');
+                        item.appendChild(badge);
+                    }
+                    badge.textContent = unreadCounts[friendId];
+                } else if (badge) {
+                    badge.remove();
+                }
+            }
+        }
+
         chatForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const text = chatInput.value.trim();
-            if(!text || !currentChannelName) return;
+            if(!text || !currentChannelName || !currentFriendId) return;
 
             const now = new Date();
             const timeStr = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 
-            // メッセージ送信ロジックの構造はそのまま維持
             const msgData = {
                 channel: currentRoomId,
                 myId: currentUser.userId,
                 friendId: currentFriendId,
-                groupId: currentGroupId, // グループID識別子を内包
                 name: currentUser.username,
                 avatar: currentUser.username.charAt(0).toUpperCase(),
                 color: '#0b57d0',
@@ -973,18 +783,11 @@
             sendBtn.disabled = true;
         });
 
-        // チャンネル切り替え処理（一対一・グループ両対応）
-        function switchChannel(element, name, avatarChar, color, friendId, groupId) {
+        function switchChannel(element, name, avatarChar, color, friendId) {
             currentChannelName = name;
             currentFriendId = friendId;
-            currentGroupId = groupId;
             currentChannelColor = color || '#74c0fc';
-            
-            if (groupId) {
-                currentRoomId = groupId;
-            } else {
-                currentRoomId = [currentUser.userId, friendId].sort().join('_');
-            }
+            currentRoomId = [currentUser.userId, friendId].sort().join('_');
             
             document.querySelectorAll('.chat-item').forEach(item => item.classList.remove('active'));
             element.classList.add('active');
@@ -993,12 +796,13 @@
             chatInput.placeholder = `${name} へのメッセージ`;
             chatInput.disabled = false;
             statusDot.style.display = 'block';
+
+            // チャットルームを開いたので未読カウントをリセット
+            updateUnreadCount(friendId, 0);
             
             socket.emit('join_channel', {
                 myId: currentUser.userId,
-                myName: currentUser.username,
-                friendId: currentFriendId,
-                groupId: currentGroupId
+                friendId: currentFriendId
             });
         }
 
@@ -1026,5 +830,5 @@
         // 初回ロード実行
         loadFriends();
     </script>
-</body>    
+</body>
 </html>
