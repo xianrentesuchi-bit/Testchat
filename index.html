@@ -136,7 +136,7 @@
         }
 
         .menu-section {
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             flex: 1;
             overflow-y: auto;
         }
@@ -837,6 +837,24 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="groupModal">
+        <div class="modal-window">
+            <div class="modal-header-area">
+                <div class="modal-title">グループチャットの作成</div>
+                <button class="btn-modal-close" onclick="closeGroupModal()">
+                    <i class="material-icons-outlined">close</i>
+                </button>
+            </div>
+            <div class="modal-section-item" style="margin-bottom: 0;">
+                <div class="modal-section-title">グループ名を入力</div>
+                <div class="modal-input-group">
+                    <input type="text" id="modalGroupNameInput" placeholder="グループ名">
+                    <button onclick="createGroupFromModal()">作成</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="msg-context-menu" id="msgContextMenu">
         <div class="msg-context-menu-item" id="ctxMenuEdit">
             <i class="material-icons-outlined" style="font-size: 18px;">edit</i>編集
@@ -870,8 +888,17 @@
                     <i class="material-icons-outlined" style="font-size: 18px;">add</i>
                 </button>
             </div>
-            <ul class="chat-list" id="chatList">
-            </ul>
+            <ul class="chat-list" id="chatList"></ul>
+        </div>
+
+        <div class="menu-section" style="border-top: 1px solid rgba(0,0,0,0.05); padding-top: 8px;">
+            <div class="section-title">
+                <span>グループチャット</span>
+                <button class="btn-add-friend-trigger" onclick="openGroupModal()" title="グループを作成">
+                    <i class="material-icons-outlined" style="font-size: 18px;">group_add</i>
+                </button>
+            </div>
+            <ul class="chat-list" id="groupChatList"></ul>
         </div>
     </div>
 
@@ -892,7 +919,7 @@
             </div>
 
             <div style="text-align:center; padding-top:40px; color:var(--text-sub);">
-                左側のリストからフレンドを選択してチャットを開始してください。
+                左側のリストからフレンドまたはグループを選択してチャットを開始してください。
             </div>
         </div>
 
@@ -946,17 +973,20 @@
         const chatForm = document.getElementById('chatForm');
         const messageArea = document.getElementById('messageArea');
         const chatList = document.getElementById('chatList');
+        const groupChatList = document.getElementById('groupChatList');
         const toast = document.getElementById('toast');
         const statusDot = document.getElementById('statusDot');
         const sidebar = document.getElementById('sidebar');
         const historyLoading = document.getElementById('historyLoading');
         const friendModal = document.getElementById('friendModal');
+        const groupModal = document.getElementById('groupModal');
         const msgContextMenu = document.getElementById('msgContextMenu');
 
         let currentChannelName = '';
         let currentChannelColor = '#74c0fc';
         let currentFriendId = '';
         let currentRoomId = '';
+        let isGroupMode = false; // 現在のチャットがグループかどうかの判別フラグ
 
         let editingMessageId = null; // 編集中のメッセージIDを保持する変数
 
@@ -975,6 +1005,16 @@
         function closeFriendModal() {
             friendModal.classList.remove('show');
             document.getElementById('modalFriendIdInput').value = '';
+        }
+
+        // グループモーダル制御関数 (新規追加)
+        function openGroupModal() {
+            groupModal.classList.add('show');
+        }
+
+        function closeGroupModal() {
+            groupModal.classList.remove('show');
+            document.getElementById('modalGroupNameInput').value = '';
         }
 
         function copyMyIdFromModal() {
@@ -999,6 +1039,30 @@
                     inputField.value = '';
                     closeFriendModal();
                     loadFriends();
+                }
+            } catch(err) {
+                showToast("通信エラーが発生しました");
+            }
+        }
+
+        // グループ作成処理 (新規追加)
+        async function createGroupFromModal() {
+            const inputField = document.getElementById('modalGroupNameInput');
+            const groupName = inputField.value.trim();
+            if(!groupName) return;
+
+            try {
+                const res = await fetch('/api/groups/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: groupName, creatorId: currentUser.userId })
+                });
+                const data = await res.json();
+                showToast(data.message);
+                if(data.success) {
+                    inputField.value = '';
+                    closeGroupModal();
+                    loadGroups();
                 }
             } catch(err) {
                 showToast("通信エラーが発生しました");
@@ -1033,8 +1097,8 @@
                         const li = document.createElement('li');
                         li.classList.add('chat-item');
                         li.setAttribute('data-friend-id', f.user_id);
-                        if (currentChannelName === f.username) li.classList.add('active');
-                        li.onclick = function() { switchChannel(this, f.username, initial, color, f.user_id); };
+                        if (!isGroupMode && currentChannelName === f.username) li.classList.add('active');
+                        li.onclick = function() { isGroupMode = false; switchChannel(this, f.username, initial, color, f.user_id); };
                         
                         const badgeCount = unreadCounts[f.user_id] || 0;
                         const badgeHtml = badgeCount > 0 ? `<div class="badge">${badgeCount}</div>` : '';
@@ -1049,6 +1113,43 @@
                 }
             } catch (err) {
                 console.error("フレンドリスト取得失敗", err);
+            }
+        }
+
+        // グループ一覧取得処理 (新規追加)
+        async function loadGroups() {
+            try {
+                const res = await fetch('/api/groups');
+                const data = await res.json();
+                if (data.success) {
+                    groupChatList.innerHTML = '';
+                    if(data.groups.length === 0) {
+                        groupChatList.innerHTML = '<li style="font-size:0.8rem; padding:8px; color:var(--text-sub);">グループがありません</li>';
+                    }
+                    data.groups.forEach((g, idx) => {
+                        const initial = g.name.charAt(0).toUpperCase();
+                        const colors = ['#b2f2bb', '#ffc9c9', '#e2c5ff', '#74c0fc', '#fcdebc'];
+                        const color = colors[idx % colors.length];
+
+                        const li = document.createElement('li');
+                        li.classList.add('chat-item');
+                        li.setAttribute('data-group-id', g.group_id);
+                        if (isGroupMode && currentRoomId === g.group_id) li.classList.add('active');
+                        li.onclick = function() { isGroupMode = true; switchChannel(this, g.name, initial, color, g.group_id); };
+                        
+                        const badgeCount = unreadCounts[g.group_id] || 0;
+                        const badgeHtml = badgeCount > 0 ? `<div class="badge">${badgeCount}</div>` : '';
+
+                        li.innerHTML = `
+                            <div class="avatar" style="background-color: ${color};">${initial}</div>
+                            <span>${g.name}</span>
+                            ${badgeHtml}
+                        `;
+                        groupChatList.appendChild(li);
+                    });
+                }
+            } catch (err) {
+                console.error("グループリスト取得失敗", err);
             }
         }
 
@@ -1123,27 +1224,23 @@
             });
         }
 
-        // 自分自身の投稿に対して長押し・右クリックを検知する関数
         function enableLongPressMenu(element, msgId, rawText) {
             let pressTimer;
 
             const startPress = (e) => {
-                // 返信スワイプの誤動作を防ぐため、メニュー処理のタイマーを設定
                 pressTimer = setTimeout(() => {
                     showContextMenu(e, msgId, rawText);
-                }, 600); // 0.6秒の長押しでメニュー表示
+                }, 600);
             };
 
             const cancelPress = () => {
                 clearTimeout(pressTimer);
             };
 
-            // モバイル用タッチイベント
             element.addEventListener('touchstart', startPress, { passive: true });
             element.addEventListener('touchend', cancelPress, { passive: true });
             element.addEventListener('touchmove', cancelPress, { passive: true });
 
-            // PC用右クリックイベント
             element.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 showContextMenu(e, msgId, rawText);
@@ -1154,12 +1251,10 @@
             editingMessageId = msgId;
             msgContextMenu.style.display = 'flex';
 
-            // 表示位置の算出（画面外にはみ出さないように補正）
             let x = e.clientX || (e.touches && e.touches[0].clientX);
             let y = e.clientY || (e.touches && e.touches[0].clientY);
 
             if (!x || !y) {
-                // touchstartなどの理由で座標が取れない場合のフォールバック
                 const rect = e.currentTarget.getBoundingClientRect();
                 x = rect.left + window.scrollX;
                 y = rect.top + window.scrollY;
@@ -1171,7 +1266,6 @@
             msgContextMenu.style.left = `${x}px`;
             msgContextMenu.style.top = `${y}px`;
 
-            // 各メニュー項目のクリックイベント設定
             document.getElementById('ctxMenuEdit').onclick = () => {
                 hideContextMenu();
                 chatInput.value = rawText;
@@ -1195,7 +1289,6 @@
             msgContextMenu.style.display = 'none';
         }
 
-        // 画面外クリックでメニューを閉じる
         document.addEventListener('click', (e) => {
             if (!msgContextMenu.contains(e.target)) {
                 hideContextMenu();
@@ -1203,7 +1296,6 @@
         });
 
         function appendMessageElement(data) {
-            // 既存の同じIDを持つメッセージがあれば更新、なければ新規作成
             let msgGroup = document.getElementById(`msg-group-${data.id}`);
             const isNew = !msgGroup;
 
@@ -1244,12 +1336,11 @@
                         </div>
                     </div>
                 `;
-                // 自分の投稿に対してのみ長押し編集・削除機能を有効化
                 enableLongPressMenu(msgGroup, data.id, data.text);
             } else {
                 msgGroup.classList.add('received');
                 msgGroup.innerHTML = `
-                    <div class="msg-avatar" style="background-color: ${data.color};">${data.avatar}</div>
+                    <div class="msg-avatar" style="background-color: ${data.color || '#74c0fc'};">${data.avatar}</div>
                     <div class="msg-body">
                         <div class="msg-header">
                             <span class="msg-name">${data.name}</span>
@@ -1293,7 +1384,6 @@
             mergedRows.sort((a, b) => (a.id || 0) - (b.id || 0));
             setLocalCache(currentRoomId, mergedRows);
 
-            // 残存テキスト等を綺麗にするため、読み込みアニメーション枠以外の内容を消去
             const savedLoading = historyLoading.cloneNode(true);
             messageArea.innerHTML = '';
             messageArea.appendChild(savedLoading);
@@ -1319,7 +1409,6 @@
                 });
             }
             
-            // アニメーション非表示化
             document.getElementById('historyLoading').classList.remove('show');
         });
 
@@ -1329,14 +1418,18 @@
                 let currentCache = getLocalCache(currentRoomId);
                 const index = currentCache.findIndex(row => row.id === msgData.id);
                 if (index !== -1) {
-                    currentCache[index] = msgData; // 編集データのキャッシュ更新対応
+                    currentCache[index] = msgData;
                 } else {
                     currentCache.push(msgData);
                 }
                 setLocalCache(currentRoomId, currentCache);
             } else {
+                // 自分以外の発言であればバッジ通知を更新
                 if (msgData.myId !== currentUser.userId) {
-                    updateUnreadCount(msgData.myId, 1);
+                    // グループメッセージの場合は channel を、DMの場合は myId をキーにする
+                    const isTargetGroup = msgData.channel.startsWith('group_');
+                    const badgeKey = isTargetGroup ? msgData.channel : msgData.myId;
+                    updateUnreadCount(badgeKey, 1, isTargetGroup);
                 }
             }
 
@@ -1348,7 +1441,6 @@
             }
         });
 
-        // メッセージがサーバー側で編集・更新されたときの受信処理
         socket.on('message_updated', (msgData) => {
             if (msgData.channel === currentRoomId) {
                 appendMessageElement(msgData);
@@ -1361,7 +1453,6 @@
             }
         });
 
-        // メッセージがサーバー側で削除されたときの受信処理
         socket.on('message_deleted', (data) => {
             if (data.channel === currentRoomId) {
                 const targetElement = document.getElementById(`msg-group-${data.id}`);
@@ -1374,23 +1465,24 @@
             }
         });
 
-        function updateUnreadCount(friendId, amount) {
+        function updateUnreadCount(targetId, amount, isGroup = false) {
             if (amount === 0) {
-                unreadCounts[friendId] = 0;
+                unreadCounts[targetId] = 0;
             } else {
-                unreadCounts[friendId] = (unreadCounts[friendId] || 0) + amount;
+                unreadCounts[targetId] = (unreadCounts[targetId] || 0) + amount;
             }
 
-            const item = document.querySelector(`.chat-item[data-friend-id="${friendId}"]`);
+            const selector = isGroup ? `.chat-item[data-group-id="${targetId}"]` : `.chat-item[data-friend-id="${targetId}"]`;
+            const item = document.querySelector(selector);
             if (item) {
                 let badge = item.querySelector('.badge');
-                if (unreadCounts[friendId] > 0) {
+                if (unreadCounts[targetId] > 0) {
                     if (!badge) {
                         badge = document.createElement('div');
                         badge.classList.add('badge');
                         item.appendChild(badge);
                     }
-                    badge.textContent = unreadCounts[friendId];
+                    badge.textContent = unreadCounts[targetId];
                 } else if (badge) {
                     badge.remove();
                 }
@@ -1400,13 +1492,12 @@
         chatForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const text = chatInput.value.trim();
-            if(!text || !currentChannelName || !currentFriendId) return;
+            if(!text || !currentChannelName) return;
 
             const now = new Date();
             const timeStr = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 
             if (editingMessageId !== null) {
-                // 編集送信の場合
                 socket.emit('edit_message', {
                     id: editingMessageId,
                     channel: currentRoomId,
@@ -1415,11 +1506,10 @@
                 editingMessageId = null;
                 chatInput.placeholder = `${currentChannelName} へのメッセージ`;
             } else {
-                // 通常の新規メッセージ送信の場合
                 const msgData = {
                     channel: currentRoomId,
                     myId: currentUser.userId,
-                    friendId: currentFriendId,
+                    friendId: isGroupMode ? '' : currentFriendId, // グループ時は空文字
                     name: currentUser.username,
                     avatar: currentUser.username.charAt(0).toUpperCase(),
                     color: '#0b57d0',
@@ -1435,11 +1525,17 @@
             sendBtn.disabled = true;
         });
 
-        function switchChannel(element, name, avatarChar, color, friendId) {
+        function switchChannel(element, name, avatarChar, color, targetId) {
             currentChannelName = name;
-            currentFriendId = friendId;
             currentChannelColor = color || '#74c0fc';
-            currentRoomId = [currentUser.userId, friendId].sort().join('_');
+            
+            if (isGroupMode) {
+                currentFriendId = '';
+                currentRoomId = targetId; // グループIDそのままがルームID
+            } else {
+                currentFriendId = targetId;
+                currentRoomId = [currentUser.userId, targetId].sort().join('_');
+            }
             
             document.querySelectorAll('.chat-item').forEach(item => item.classList.remove('active'));
             element.classList.add('active');
@@ -1449,9 +1545,8 @@
             chatInput.disabled = false;
             statusDot.style.display = 'block';
 
-            updateUnreadCount(friendId, 0);
+            updateUnreadCount(targetId, 0, isGroupMode);
 
-            // チャンネル切り替え時に読み込みアニメーションを表示
             document.getElementById('historyLoading').classList.add('show');
 
             let cachedRows = getLocalCache(currentRoomId);
@@ -1466,10 +1561,11 @@
             
             socket.emit('join_channel', {
                 myId: currentUser.userId,
-                friendId: currentFriendId
+                friendId: currentFriendId,
+                isGroup: isGroupMode,
+                groupId: isGroupMode ? targetId : ''
             });
 
-            // モバイル端末等でチャンネル選択時に自動でサイドバーを閉じる対応
             if (window.innerWidth <= 768) {
                 sidebar.classList.add('hidden');
             }
@@ -1496,7 +1592,9 @@
             chatInput.focus();
         });
 
+        // 初回読み込み時に両方のリストをフェッチ
         loadFriends();
+        loadGroups();
     </script>
     <script>
         if ('serviceWorker' in navigator) {
