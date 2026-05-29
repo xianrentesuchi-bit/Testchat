@@ -51,6 +51,15 @@ async function initDB() {
             creator_id TEXT NOT NULL
         )
     `);
+    // 機能拡張: グループメンバー管理用テーブル
+    await db.execute(`
+        CREATE TABLE IF NOT EXISTS group_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            group_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            UNIQUE(group_id, user_id)
+        )
+    `);
 }
 initDB().catch(console.error);
 
@@ -142,9 +151,9 @@ app.get('/api/friends', async (req, res) => {
     }
 });
 
-// 新規追加: グループ作成用API
+// 新規追加: グループ作成用API（メンバー同時追加対応）
 app.post('/api/groups/create', async (req, res) => {
-    const { name, creatorId } = req.body;
+    const { name, creatorId, members } = req.body; // members は配列想定
     if (!name || !creatorId) {
         return res.json({ success: false, message: "グループ名または作成者IDが不足しています。" });
     }
@@ -154,6 +163,23 @@ app.post('/api/groups/create', async (req, res) => {
             sql: "INSERT INTO chat_groups (group_id, name, creator_id) VALUES (?, ?, ?)",
             args: [groupId, name, creatorId]
         });
+
+        // 作成者自身をメンバーに追加
+        await db.execute({
+            sql: "INSERT INTO group_members (group_id, user_id) VALUES (?, ?)",
+            args: [groupId, creatorId]
+        });
+
+        // 選択されたフレンドをメンバーに追加
+        if (members && Array.isArray(members)) {
+            for (const memberId of members) {
+                await db.execute({
+                    sql: "INSERT OR IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)",
+                    args: [groupId, memberId]
+                });
+            }
+        }
+
         res.json({ success: true, message: `グループ「${name}」を作成しました。` });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -165,6 +191,54 @@ app.get('/api/groups', async (req, res) => {
     try {
         const result = await db.execute("SELECT group_id, name, creator_id FROM chat_groups");
         res.json({ success: true, groups: result.rows });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 機能拡張: グループ所属メンバー一覧取得API
+app.get('/api/groups/members', async (req, res) => {
+    const { groupId } = req.query;
+    if (!groupId) {
+        return res.json({ success: false, message: "グループIDが不足しています。" });
+    }
+    try {
+        const result = await db.execute({
+            sql: "SELECT u.user_id, u.username FROM group_members gm JOIN users u ON gm.user_id = u.user_id WHERE gm.group_id = ?",
+            args: [groupId]
+        });
+        res.json({ success: true, members: result.rows });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 機能拡張: グループ削除API（オーナー権限チェック付き）
+app.post('/api/groups/delete', async (req, res) => {
+    const { groupId, userId } = req.body;
+    if (!groupId || !userId) {
+        return res.json({ success: false, message: "情報が不足しています。" });
+    }
+    try {
+        const groupCheck = await db.execute({
+            sql: "SELECT creator_id FROM chat_groups WHERE group_id = ?",
+            args: [groupId]
+        });
+
+        if (groupCheck.rows.length === 0) {
+            return res.json({ success: false, message: "グループが見つかりません。" });
+        }
+
+        if (groupCheck.rows[0].creator_id !== userId) {
+            return res.json({ success: false, message: "グループを削除する権限がありません（オーナー限定）。" });
+        }
+
+        // グループ、メンバー、関連メッセージの削除
+        await db.execute({ sql: "DELETE FROM chat_groups WHERE group_id = ?", args: [groupId] });
+        await db.execute({ sql: "DELETE FROM group_members WHERE group_id = ?", args: [groupId] });
+        await db.execute({ sql: "DELETE FROM messages WHERE channel = ?", args: [groupId] });
+
+        res.json({ success: true, message: "グループを削除しました。" });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
