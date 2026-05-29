@@ -35,6 +35,8 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <style>
         :root {
             --bg-main: #ffffff;
@@ -72,7 +74,12 @@
             border-right: 1px solid rgba(0,0,0,0.05);
             padding: 8px;
             flex-shrink: 0;
-            transition: transform 0.3s ease, width 0.3s ease;
+            transition: transform 0.3s ease, width 0.3s ease, margin-left 0.3s ease;
+        }
+
+        /* サイドバー非表示用クラス */
+        .sidebar.hidden {
+            margin-left: -256px;
         }
 
         .logo-area {
@@ -143,6 +150,24 @@
             font-weight: 600;
             color: var(--text-sub);
             text-transform: uppercase;
+        }
+
+        /* フレンド追加プラスボタン */
+        .btn-add-friend-trigger {
+            background: none;
+            border: none;
+            color: var(--brand-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+        }
+
+        .btn-add-friend-trigger:hover {
+            background-color: var(--bg-hover);
         }
 
         .chat-list {
@@ -227,6 +252,25 @@
             gap: 12px;
         }
 
+        /* サイドバー開閉ボタン */
+        .btn-toggle-sidebar {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .btn-toggle-sidebar:hover {
+            background-color: var(--bg-sidebar);
+            color: var(--text-main);
+        }
+
         .header-title {
             font-size: 1.1rem;
             font-weight: 500;
@@ -247,6 +291,7 @@
             flex-direction: column;
             gap: 16px;
             background-color: #f8f9fa;
+            position: relative;
         }
 
         .message-group {
@@ -256,6 +301,8 @@
             max-width: 85%;
             touch-action: pan-y;
             transition: transform 0.15s ease-out;
+            -webkit-user-select: none; /* 長押し時のテキスト選択を防止 */
+            user-select: none;
         }
 
         .message-group.received {
@@ -265,6 +312,7 @@
         .message-group.sent {
             align-self: flex-end;
             flex-direction: row-reverse;
+            cursor: pointer; /* 自分の投稿はクリック/タップできることを示す */
         }
 
         .msg-avatar {
@@ -322,6 +370,8 @@
             word-break: break-all;
             white-space: pre-wrap;
             position: relative;
+            -webkit-user-select: text; /* メッセージ本文は選択可能に */
+            user-select: text;
         }
 
         .message-group.received .msg-text {
@@ -478,50 +528,263 @@
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s;
-            z-index: 999;
+            z-index: 1000;
         }
         
         .toast.show {
             opacity: 1;
         }
 
+        /* 読み込みアニメーションスピナー */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(248, 249, 25a, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .loading-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(11, 87, 208, 0.1);
+            border-top-color: var(--brand-color);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Windowモーダルスタイル */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-window {
+            background-color: #ffffff;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+            overflow: hidden;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+            padding: 24px;
+        }
+
+        .modal-overlay.show .modal-window {
+            transform: translateY(0);
+        }
+
+        .modal-header-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        .btn-modal-close {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-modal-close:hover {
+            background-color: var(--bg-hover);
+        }
+
+        .modal-section-item {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .modal-section-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+            text-align: left;
+        }
+
+        .qr-wrapper {
+            display: flex;
+            justify-content: center;
+            margin: 12px 0;
+            padding: 8px;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            width: 140px;
+            height: 140px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .modal-id-box {
+            display: flex;
+            align-items: center;
+            background-color: var(--bg-sidebar);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: var(--brand-color);
+            font-weight: 500;
+            cursor: pointer;
+            word-break: break-all;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .modal-id-box:hover {
+            background-color: var(--bg-hover);
+        }
+
+        .modal-input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .modal-input-group input {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .modal-input-group input:focus {
+            border-color: var(--brand-color);
+        }
+
+        .modal-input-group button {
+            background-color: var(--brand-color);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .modal-input-group button:hover {
+            background-color: #0b4ec2;
+        }
+
+        /* メッセージ操作用のコンテキストメニュー / アクションシート */
+        .msg-context-menu {
+            position: fixed;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 3000;
+            display: none;
+            flex-direction: column;
+            padding: 4px 0;
+            min-width: 120px;
+        }
+        .msg-context-menu-item {
+            padding: 10px 16px;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .msg-context-menu-item:hover {
+            background-color: var(--bg-sidebar);
+        }
+
         @media (max-width: 768px) {
             .sidebar {
-                width: 72px;
-                padding: 8px 4px;
+                width: 256px;
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+                box-shadow: 2px 0 12px rgba(0,0,0,0.1);
+            }
+            .sidebar.hidden {
+                margin-left: -256px;
             }
             .logo-area span,
             .user-info-box,
             .friend-add-box,
             .section-title,
             .chat-item span {
-                display: none !important;
+                display: flex !important;
             }
             .logo-area {
-                justify-content: center;
-                padding: 12px 0;
+                justify-content: flex-start;
+                padding: 12px 8px;
             }
             .chat-item {
-                padding: 10px 0;
-                justify-content: center;
-                border-radius: 50%;
-                width: 48px;
-                height: 48px;
-                margin: 0 auto 8px auto;
+                padding: 8px 12px;
+                justify-content: flex-start;
+                border-radius: 20px;
+                width: auto;
+                height: auto;
+                margin: 0 0 2px 0;
             }
             .avatar {
-                width: 32px;
-                height: 32px;
-                font-size: 0.9rem;
+                width: 24px;
+                height: 24px;
+                font-size: 0.75rem;
             }
             .badge {
-                position: absolute;
-                top: 2px;
-                right: 2px;
-                margin-left: 0;
-                min-width: 16px;
-                height: 16px;
-                font-size: 0.65rem;
+                position: static;
+                margin-left: auto;
+                min-width: 18px;
+                height: 18px;
+                font-size: 0.75rem;
             }
             .main-header {
                 padding: 0 16px;
@@ -542,7 +805,48 @@
 
     <div id="toast" class="toast">アクションが実行されました</div>
 
-    <div class="sidebar">
+    <div class="modal-overlay" id="friendModal">
+        <div class="modal-window">
+            <div class="modal-header-area">
+                <div class="modal-title">フレンドの追加・共有</div>
+                <button class="btn-modal-close" onclick="closeFriendModal()">
+                    <i class="material-icons-outlined">close</i>
+                </button>
+            </div>
+            
+            <div class="modal-section-item">
+                <div class="modal-section-title">あなたのQRコード</div>
+                <div class="qr-wrapper" id="myQrContainer"></div>
+            </div>
+
+            <div class="modal-section-item">
+                <div class="modal-section-title">あなたの固有ID (クリックでコピー)</div>
+                <div class="modal-id-box" onclick="copyMyIdFromModal()">
+                    <span id="modalMyUserId">...</span>
+                    <i class="material-icons-outlined" style="font-size: 18px;">content_copy</i>
+                </div>
+            </div>
+
+            <div class="modal-section-item" style="margin-bottom: 0;">
+                <div class="modal-section-title">友達の固有IDを入力して追加</div>
+                <div class="modal-input-group">
+                    <input type="text" id="modalFriendIdInput" placeholder="固有IDを入力">
+                    <button onclick="addFriendFromModal()">追加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="msg-context-menu" id="msgContextMenu">
+        <div class="msg-context-menu-item" id="ctxMenuEdit">
+            <i class="material-icons-outlined" style="font-size: 18px;">edit</i>編集
+        </div>
+        <div class="msg-context-menu-item" id="ctxMenuDelete" style="color: #b3261e;">
+            <i class="material-icons-outlined" style="font-size: 18px; color: #b3261e;">delete</i>削除
+        </div>
+    </div>
+
+    <div class="sidebar" id="sidebar">
         <div class="logo-area">
             <i class="material-icons-outlined" style="color:#0b57d0">chat</i>
             <span>SenninChat</span>
@@ -554,7 +858,7 @@
             <span class="user-id-display" id="myUserId" onclick="copyMyId()">...</span>
         </div>
 
-        <div class="friend-add-box">
+        <div class="friend-add-box" style="display: none !important;">
             <input type="text" id="friendIdInput" placeholder="友達の固有IDを入力">
             <button onclick="addFriend()">追加</button>
         </div>
@@ -562,6 +866,9 @@
         <div class="menu-section">
             <div class="section-title">
                 <span>直近のチャット・フレンド</span>
+                <button class="btn-add-friend-trigger" onclick="openFriendModal()" title="フレンドを追加">
+                    <i class="material-icons-outlined" style="font-size: 18px;">add</i>
+                </button>
             </div>
             <ul class="chat-list" id="chatList">
             </ul>
@@ -571,12 +878,19 @@
     <div class="main-content">
         <div class="main-header">
             <div class="header-left">
+                <button class="btn-toggle-sidebar" onclick="toggleSidebar()" title="サイドバーを切替">
+                    <i class="material-icons-outlined">menu</i>
+                </button>
                 <span class="header-title" id="currentChatName">チャットを選択してください</span>
                 <div class="status-dot" id="statusDot" style="display:none;"></div>
             </div>
         </div>
 
         <div class="message-area" id="messageArea">
+            <div class="loading-overlay" id="historyLoading">
+                <div class="spinner"></div>
+            </div>
+
             <div style="text-align:center; padding-top:40px; color:var(--text-sub);">
                 左側のリストからフレンドを選択してチャットを開始してください。
             </div>
@@ -613,6 +927,18 @@
 
         document.getElementById('myUsername').textContent = currentUser.username;
         document.getElementById('myUserId').textContent = currentUser.userId;
+        document.getElementById('modalMyUserId').textContent = currentUser.userId;
+
+        // QRコードの初期化生成
+        const qrContainer = document.getElementById('myQrContainer');
+        new QRCode(qrContainer, {
+            text: currentUser.userId,
+            width: 124,
+            height: 124,
+            colorDark : "#0b57d0",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
 
         const socket = io();
         const chatInput = document.getElementById('chatInput');
@@ -622,13 +948,62 @@
         const chatList = document.getElementById('chatList');
         const toast = document.getElementById('toast');
         const statusDot = document.getElementById('statusDot');
+        const sidebar = document.getElementById('sidebar');
+        const historyLoading = document.getElementById('historyLoading');
+        const friendModal = document.getElementById('friendModal');
+        const msgContextMenu = document.getElementById('msgContextMenu');
 
         let currentChannelName = '';
         let currentChannelColor = '#74c0fc';
         let currentFriendId = '';
         let currentRoomId = '';
 
+        let editingMessageId = null; // 編集中のメッセージIDを保持する変数
+
         const unreadCounts = {};
+
+        // サイドバー開閉トグル
+        function toggleSidebar() {
+            sidebar.classList.toggle('hidden');
+        }
+
+        // モーダル制御関数
+        function openFriendModal() {
+            friendModal.classList.add('show');
+        }
+
+        function closeFriendModal() {
+            friendModal.classList.remove('show');
+            document.getElementById('modalFriendIdInput').value = '';
+        }
+
+        function copyMyIdFromModal() {
+            navigator.clipboard.writeText(currentUser.userId);
+            showToast("固有IDをクリップボードにコピーしました");
+        }
+
+        async function addFriendFromModal() {
+            const inputField = document.getElementById('modalFriendIdInput');
+            const friendId = inputField.value.trim();
+            if(!friendId) return;
+
+            try {
+                const res = await fetch('/api/friends/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUser.userId, friendId: friendId })
+                });
+                const data = await res.json();
+                showToast(data.message);
+                if(data.success) {
+                    inputField.value = '';
+                    closeFriendModal();
+                    loadFriends();
+                }
+            } catch(err) {
+                showToast("通信エラーが発生しました");
+            }
+        }
 
         function showToast(message) {
             toast.textContent = message;
@@ -748,9 +1123,98 @@
             });
         }
 
+        // 自分自身の投稿に対して長押し・右クリックを検知する関数
+        function enableLongPressMenu(element, msgId, rawText) {
+            let pressTimer;
+
+            const startPress = (e) => {
+                // 返信スワイプの誤動作を防ぐため、メニュー処理のタイマーを設定
+                pressTimer = setTimeout(() => {
+                    showContextMenu(e, msgId, rawText);
+                }, 600); // 0.6秒の長押しでメニュー表示
+            };
+
+            const cancelPress = () => {
+                clearTimeout(pressTimer);
+            };
+
+            // モバイル用タッチイベント
+            element.addEventListener('touchstart', startPress, { passive: true });
+            element.addEventListener('touchend', cancelPress, { passive: true });
+            element.addEventListener('touchmove', cancelPress, { passive: true });
+
+            // PC用右クリックイベント
+            element.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showContextMenu(e, msgId, rawText);
+            });
+        }
+
+        function showContextMenu(e, msgId, rawText) {
+            editingMessageId = msgId;
+            msgContextMenu.style.display = 'flex';
+
+            // 表示位置の算出（画面外にはみ出さないように補正）
+            let x = e.clientX || (e.touches && e.touches[0].clientX);
+            let y = e.clientY || (e.touches && e.touches[0].clientY);
+
+            if (!x || !y) {
+                // touchstartなどの理由で座標が取れない場合のフォールバック
+                const rect = e.currentTarget.getBoundingClientRect();
+                x = rect.left + window.scrollX;
+                y = rect.top + window.scrollY;
+            }
+
+            if (x + 150 > window.innerWidth) x = window.innerWidth - 150;
+            if (y + 100 > window.innerHeight) y = window.innerHeight - 100;
+
+            msgContextMenu.style.left = `${x}px`;
+            msgContextMenu.style.top = `${y}px`;
+
+            // 各メニュー項目のクリックイベント設定
+            document.getElementById('ctxMenuEdit').onclick = () => {
+                hideContextMenu();
+                chatInput.value = rawText;
+                chatInput.style.height = 'auto';
+                chatInput.style.height = chatInput.scrollHeight + 'px';
+                chatInput.placeholder = "メッセージを編集...";
+                chatInput.focus();
+                sendBtn.disabled = false;
+            };
+
+            document.getElementById('ctxMenuDelete').onclick = () => {
+                hideContextMenu();
+                if (confirm("この投稿を削除してもよろしいですか？")) {
+                    socket.emit('delete_message', { id: msgId, channel: currentRoomId });
+                }
+                editingMessageId = null;
+            };
+        }
+
+        function hideContextMenu() {
+            msgContextMenu.style.display = 'none';
+        }
+
+        // 画面外クリックでメニューを閉じる
+        document.addEventListener('click', (e) => {
+            if (!msgContextMenu.contains(e.target)) {
+                hideContextMenu();
+            }
+        });
+
         function appendMessageElement(data) {
-            const msgGroup = document.createElement('div');
-            msgGroup.classList.add('message-group');
+            // 既存の同じIDを持つメッセージがあれば更新、なければ新規作成
+            let msgGroup = document.getElementById(`msg-group-${data.id}`);
+            const isNew = !msgGroup;
+
+            if (isNew) {
+                msgGroup = document.createElement('div');
+                msgGroup.id = `msg-group-${data.id}`;
+            } else {
+                msgGroup.innerHTML = '';
+            }
+
+            msgGroup.className = 'message-group';
             
             let displayFormatedText = escapeHTML(data.text);
             let replyHtml = '';
@@ -780,6 +1244,8 @@
                         </div>
                     </div>
                 `;
+                // 自分の投稿に対してのみ長押し編集・削除機能を有効化
+                enableLongPressMenu(msgGroup, data.id, data.text);
             } else {
                 msgGroup.classList.add('received');
                 msgGroup.innerHTML = `
@@ -800,7 +1266,9 @@
             
             enableSwipeToReply(msgGroup, data.text.replace(replyRegex, ''));
 
-            messageArea.appendChild(msgGroup);
+            if (isNew) {
+                messageArea.appendChild(msgGroup);
+            }
             messageArea.scrollTop = messageArea.scrollHeight;
         }
 
@@ -825,36 +1293,47 @@
             mergedRows.sort((a, b) => (a.id || 0) - (b.id || 0));
             setLocalCache(currentRoomId, mergedRows);
 
+            // 残存テキスト等を綺麗にするため、読み込みアニメーション枠以外の内容を消去
+            const savedLoading = historyLoading.cloneNode(true);
             messageArea.innerHTML = '';
+            messageArea.appendChild(savedLoading);
+
             if (mergedRows.length === 0) {
                 const initialAvatar = currentChannelName.charAt(0).toUpperCase();
-                messageArea.innerHTML = `
-                    <div class="message-group received">
-                        <div class="msg-avatar" style="background-color: ${currentChannelColor};">${initialAvatar}</div>
-                        <div class="msg-body">
-                            <div class="msg-header">
-                                <span class="msg-name">${currentChannelName}</span>
-                                <span class="msg-time">新しいスレッド</span>
-                            </div>
-                            <div class="msg-text">これは ${currentChannelName} とのトークスペースの最上部です。</div>
+                const div = document.createElement('div');
+                div.className = 'message-group received';
+                div.innerHTML = `
+                    <div class="msg-avatar" style="background-color: ${currentChannelColor};">${initialAvatar}</div>
+                    <div class="msg-body">
+                        <div class="msg-header">
+                            <span class="msg-name">${currentChannelName}</span>
+                            <span class="msg-time">新しいスレッド</span>
                         </div>
+                        <div class="msg-text">これは ${currentChannelName} とのトークスペースの最上部です。</div>
                     </div>
                 `;
+                messageArea.appendChild(div);
             } else {
                 mergedRows.forEach(row => {
                     appendMessageElement(row);
                 });
             }
+            
+            // アニメーション非表示化
+            document.getElementById('historyLoading').classList.remove('show');
         });
 
         socket.on('receive_message', (msgData) => {
             if (msgData.channel === currentRoomId) {
                 appendMessageElement(msgData);
                 let currentCache = getLocalCache(currentRoomId);
-                if (!currentCache.some(row => row.id === msgData.id)) {
+                const index = currentCache.findIndex(row => row.id === msgData.id);
+                if (index !== -1) {
+                    currentCache[index] = msgData; // 編集データのキャッシュ更新対応
+                } else {
                     currentCache.push(msgData);
-                    setLocalCache(currentRoomId, currentCache);
                 }
+                setLocalCache(currentRoomId, currentCache);
             } else {
                 if (msgData.myId !== currentUser.userId) {
                     updateUnreadCount(msgData.myId, 1);
@@ -866,6 +1345,32 @@
                     body: msgData.text,
                     icon: '/apple-touch-icon.png'
                 });
+            }
+        });
+
+        // メッセージがサーバー側で編集・更新されたときの受信処理
+        socket.on('message_updated', (msgData) => {
+            if (msgData.channel === currentRoomId) {
+                appendMessageElement(msgData);
+                let currentCache = getLocalCache(currentRoomId);
+                const index = currentCache.findIndex(row => row.id === msgData.id);
+                if (index !== -1) {
+                    currentCache[index] = msgData;
+                    setLocalCache(currentRoomId, currentCache);
+                }
+            }
+        });
+
+        // メッセージがサーバー側で削除されたときの受信処理
+        socket.on('message_deleted', (data) => {
+            if (data.channel === currentRoomId) {
+                const targetElement = document.getElementById(`msg-group-${data.id}`);
+                if (targetElement) {
+                    targetElement.remove();
+                }
+                let currentCache = getLocalCache(currentRoomId);
+                currentCache = currentCache.filter(row => row.id !== data.id);
+                setLocalCache(currentRoomId, currentCache);
             }
         });
 
@@ -900,18 +1405,30 @@
             const now = new Date();
             const timeStr = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 
-            const msgData = {
-                channel: currentRoomId,
-                myId: currentUser.userId,
-                friendId: currentFriendId,
-                name: currentUser.username,
-                avatar: currentUser.username.charAt(0).toUpperCase(),
-                color: '#0b57d0',
-                text: text,
-                timestamp: timeStr
-            };
+            if (editingMessageId !== null) {
+                // 編集送信の場合
+                socket.emit('edit_message', {
+                    id: editingMessageId,
+                    channel: currentRoomId,
+                    text: text
+                });
+                editingMessageId = null;
+                chatInput.placeholder = `${currentChannelName} へのメッセージ`;
+            } else {
+                // 通常の新規メッセージ送信の場合
+                const msgData = {
+                    channel: currentRoomId,
+                    myId: currentUser.userId,
+                    friendId: currentFriendId,
+                    name: currentUser.username,
+                    avatar: currentUser.username.charAt(0).toUpperCase(),
+                    color: '#0b57d0',
+                    text: text,
+                    timestamp: timeStr
+                };
 
-            socket.emit('send_message', msgData);
+                socket.emit('send_message', msgData);
+            }
 
             chatInput.value = '';
             chatInput.style.height = 'auto';
@@ -934,9 +1451,14 @@
 
             updateUnreadCount(friendId, 0);
 
+            // チャンネル切り替え時に読み込みアニメーションを表示
+            document.getElementById('historyLoading').classList.add('show');
+
             let cachedRows = getLocalCache(currentRoomId);
             if (cachedRows.length > 0) {
+                const savedLoading = historyLoading.cloneNode(true);
                 messageArea.innerHTML = '';
+                messageArea.appendChild(savedLoading);
                 cachedRows.forEach(row => {
                     appendMessageElement(row);
                 });
@@ -946,6 +1468,11 @@
                 myId: currentUser.userId,
                 friendId: currentFriendId
             });
+
+            // モバイル端末等でチャンネル選択時に自動でサイドバーを閉じる対応
+            if (window.innerWidth <= 768) {
+                sidebar.classList.add('hidden');
+            }
         }
 
         function toggleReaction(element) {
