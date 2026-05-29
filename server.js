@@ -11,14 +11,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
-// --- 各種設定（環境に合わせて書き換えてください） ---
+//うおw最近冷笑大好き
 const GAS_WEBAPP_URL = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwYsl3issVM1SgFyeuRVCITmIfex6kc7lmuiRXVpxbD195ctM0aAsyUxBV_NZxVz9UH/exec";
 const db = createClient({
     url: process.env.TURSO_DATABASE_URL || "libsql://senninchat-senninch.aws-ap-northeast-1.turso.io",
     authToken: process.env.TURSO_AUTH_TOKEN || "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Nzk4ODU4MzIsImlkIjoiMDE5ZTY5NTgtZTcwMS03NzhmLWFkYjAtMGQzMzM5ZDdlMDBlIiwicmlkIjoiZGU3ZTdlNTktYjZmMi00YWQ4LWIwNDMtYzkyMmY4ZDE2NGVkIn0.ER5t8rLt3YMoOWBv03igSfFH_z_O7JkdxedTLOOxv6HZ0SqiUa2Ef_Kre1qN0paLbTUkEpqlxlA5UrSSDvJkCA"
 });
 
-// データベースの初期化
 async function initDB() {
     await db.execute(`
         CREATE TABLE IF NOT EXISTS users (
@@ -48,9 +47,7 @@ async function initDB() {
 }
 initDB().catch(console.error);
 
-// --- アカウントサービスAPI (GAS連携) ---
 
-// 1. ログイン処理
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -61,7 +58,6 @@ app.post('/api/login', async (req, res) => {
         const result = await gasRes.json();
 
         if (result.success) {
-            // 認証成功時、Turso側にユーザー情報を同期保存（存在しなければ挿入）
             await db.execute({
                 sql: "INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)",
                 args: [result.userId, result.username]
@@ -73,7 +69,6 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// 2. 新規登録処理
 app.post('/api/register', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -96,7 +91,6 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// 3. フレンド追加処理 (userId を使用 - お互いに登録されるように修正)
 app.post('/api/friends/add', async (req, res) => {
     const { userId, friendId } = req.body;
     if (!userId || !friendId) {
@@ -133,7 +127,6 @@ app.post('/api/friends/add', async (req, res) => {
     }
 });
 
-// 4. フレンド一覧取得処理
 app.get('/api/friends', async (req, res) => {
     const { userId } = req.query;
     try {
@@ -148,13 +141,10 @@ app.get('/api/friends', async (req, res) => {
 });
 
 
-// --- Socket.io リアルタイム通信ロジック ---
 io.on('connection', (socket) => {
     socket.on('join_channel', async (data) => {
         const { myId, friendId } = data;
         if (!myId || !friendId) return;
-
-        // 2人のユーザーIDを並び替えて共通のルームIDを決定
         const roomId = [myId, friendId].sort().join('_');
         socket.join(roomId);
 
@@ -164,14 +154,12 @@ io.on('connection', (socket) => {
                 args: [roomId]
             });
             socket.emit('load_history', result.rows);
-            // クライアント側の localStorage キャッシュを更新させるためにデータを送信
             socket.emit('save_history_cache', { roomId: roomId, rows: result.rows });
         } catch (err) {
             console.error("データ取得失敗:", err);
         }
     });
 
-    // キャッシュ存在時にデータベースの読み込みを行わずにルーム参加のみ処理するイベント
     socket.on('join_channel_silent', (data) => {
         const { myId, friendId } = data;
         if (!myId || !friendId) return;
@@ -183,10 +171,8 @@ io.on('connection', (socket) => {
         const { myId, friendId, name, avatar, color, text, timestamp } = msgData;
         if (!myId || !friendId) return;
 
-        // 保存用・通信用に共通のルームIDを決定
         const roomId = [myId, friendId].sort().join('_');
 
-        // 【最適化】メッセージをまず即座に WebSocket でブロードキャスト送信（先行通知）
         io.to(roomId).emit('receive_message', {
             channel: roomId,
             myId: myId,
@@ -198,7 +184,6 @@ io.on('connection', (socket) => {
             timestamp: timestamp
         });
 
-        // 配信処理が完了した後に、非同期でデータベースへの保存を実行
         try {
             await db.execute({
                 sql: "INSERT INTO messages (channel, name, avatar, color, text, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
