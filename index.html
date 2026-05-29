@@ -742,6 +742,67 @@
             background-color: var(--bg-sidebar);
         }
 
+        /* 機能拡張: 追加UIパーツ用スタイル */
+        .modal-member-list {
+            max-height: 120px;
+            overflow-y: auto;
+            text-align: left;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 12px;
+        }
+        .modal-member-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            padding: 4px 0;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .btn-header-action {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-header-action:hover {
+            background-color: var(--bg-sidebar);
+            color: var(--text-main);
+        }
+        .btn-danger {
+            background-color: #b3261e !important;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 12px;
+            font-weight: 500;
+        }
+        .btn-danger:hover {
+            background-color: #8c1d18 !important;
+        }
+        .info-list-text {
+            text-align: left;
+            font-size: 0.9rem;
+            padding: 4px 8px;
+            background: var(--bg-sidebar);
+            margin-bottom: 4px;
+            border-radius: 4px;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 256px;
@@ -845,11 +906,36 @@
                     <i class="material-icons-outlined">close</i>
                 </button>
             </div>
-            <div class="modal-section-item" style="margin-bottom: 0;">
+            <div class="modal-section-item">
                 <div class="modal-section-title">グループ名を入力</div>
-                <div class="modal-input-group">
+                <div class="modal-input-group" style="margin-bottom:12px;">
                     <input type="text" id="modalGroupNameInput" placeholder="グループ名">
-                    <button onclick="createGroupFromModal()">作成</button>
+                </div>
+                <div class="modal-section-title">追加するメンバーを選択</div>
+                <div class="modal-member-list" id="modalGroupFriendSelectContainer">
+                    </div>
+                <div class="modal-input-group">
+                    <button onclick="createGroupFromModal()" style="width:100%;">作成</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="groupManageModal">
+        <div class="modal-window">
+            <div class="modal-header-area">
+                <div class="modal-title" id="manageModalGroupTitle">グループ管理</div>
+                <button class="btn-modal-close" onclick="closeGroupManageModal()">
+                    <i class="material-icons-outlined">close</i>
+                </button>
+            </div>
+            <div class="modal-section-item" style="margin-bottom: 0;">
+                <div class="modal-section-title">参加メンバー一覧</div>
+                <div id="manageModalMemberList" style="max-height:160px; overflow-y:auto; margin-bottom:12px;">
+                    </div>
+                <div id="manageModalOwnerActions" style="display:none;">
+                    <div class="modal-section-title" style="color:#b3261e; margin-top:16px;">管理者メニュー</div>
+                    <button class="btn-danger" onclick="deleteCurrentGroup()">このグループを削除する</button>
                 </div>
             </div>
         </div>
@@ -910,6 +996,11 @@
                 </button>
                 <span class="header-title" id="currentChatName">チャットを選択してください</span>
                 <div class="status-dot" id="statusDot" style="display:none;"></div>
+            </div>
+            <div class="header-right" id="headerRightArea" style="display:none;">
+                <button class="btn-header-action" onclick="openGroupManageModal()" title="グループ情報を確認">
+                    <i class="material-icons-outlined">group</i>
+                </button>
             </div>
         </div>
 
@@ -982,6 +1073,12 @@
         const groupModal = document.getElementById('groupModal');
         const msgContextMenu = document.getElementById('msgContextMenu');
 
+        // 機能拡張: 追加で定義するUI管理用変数
+        const groupManageModal = document.getElementById('groupManageModal');
+        const headerRightArea = document.getElementById('headerRightArea');
+        let globalFriendsList = []; // モーダル内のフレンド動的レンダリング用キャッシュ
+        let currentGroupCreatorId = ''; // 現在開いているグループチャットのオーナーID保持用
+
         let currentChannelName = '';
         let currentChannelColor = '#74c0fc';
         let currentFriendId = '';
@@ -1007,14 +1104,110 @@
             document.getElementById('modalFriendIdInput').value = '';
         }
 
-        // グループモーダル制御関数 (新規追加)
+        // グループモーダル制御関数 (機能拡張: 起動時にフレンド選択肢を生成)
         function openGroupModal() {
+            const container = document.getElementById('modalGroupFriendSelectContainer');
+            container.innerHTML = '';
+            
+            if (globalFriendsList.length === 0) {
+                container.innerHTML = '<div style="font-size:0.85rem; color:var(--text-sub);">選択できるフレンドがいません</div>';
+            } else {
+                globalFriendsList.forEach(f => {
+                    const label = document.createElement('label');
+                    label.className = 'modal-member-item';
+                    label.innerHTML = `
+                        <input type="checkbox" name="createGroupMembers" value="${f.user_id}">
+                        <span>${escapeHTML(f.username)}</span>
+                    `;
+                    container.appendChild(label);
+                });
+            }
             groupModal.classList.add('show');
         }
 
         function closeGroupModal() {
             groupModal.classList.remove('show');
             document.getElementById('modalGroupNameInput').value = '';
+        }
+
+        // 機能拡張: グループ詳細管理モーダル開閉
+        async function openGroupManageModal() {
+            if (!isGroupMode || !currentRoomId) return;
+            
+            document.getElementById('manageModalGroupTitle').textContent = `グループ「${currentChannelName}」`;
+            const memberListDiv = document.getElementById('manageModalMemberList');
+            memberListDiv.innerHTML = '<div style="font-size:0.9rem; color:var(--text-sub);">読み込み中...</div>';
+            
+            // オーナー判定UI切り替え
+            if (currentGroupCreatorId === currentUser.userId) {
+                document.getElementById('manageModalOwnerActions').style.display = 'block';
+            } else {
+                document.getElementById('manageModalOwnerActions').style.display = 'none';
+            }
+
+            try {
+                const res = await fetch(`/api/groups/members?groupId=${currentRoomId}`);
+                const data = await res.json();
+                if (data.success) {
+                    memberListDiv.innerHTML = '';
+                    data.members.forEach(m => {
+                        const div = document.createElement('div');
+                        div.className = 'info-list-text';
+                        // オーナーマーク付与
+                        const crown = (m.user_id === currentGroupCreatorId) ? ' 👑(オーナー)' : '';
+                        div.textContent = `${m.username}${crown}`;
+                        memberListDiv.appendChild(div);
+                    });
+                } else {
+                    memberListDiv.innerHTML = '<div style="font-size:0.9rem; color:#b3261e;">メンバーの取得に失敗しました</div>';
+                }
+            } catch (err) {
+                memberListDiv.innerHTML = '<div style="font-size:0.9rem; color:#b3261e;">通信エラーが発生しました</div>';
+            }
+
+            groupManageModal.classList.add('show');
+        }
+
+        function closeGroupManageModal() {
+            groupManageModal.classList.remove('show');
+        }
+
+        // 機能拡張: オーナー用グループ削除ファンクション
+        async function deleteCurrentGroup() {
+            if (!confirm(`本当にグループ「${currentChannelName}」を削除しますか？\nこの操作は取り消せず、メッセージ履歴も全削除されます。`)) {
+                return;
+            }
+            try {
+                const res = await fetch('/api/groups/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ groupId: currentRoomId, userId: currentUser.userId })
+                });
+                const data = await res.json();
+                showToast(data.message);
+                if (data.success) {
+                    closeGroupManageModal();
+                    // チャット表示エリアの初期化リセット
+                    currentChannelName = '';
+                    currentRoomId = '';
+                    isGroupMode = false;
+                    document.getElementById('currentChatName').textContent = 'チャットを選択してください';
+                    chatInput.disabled = true;
+                    chatInput.placeholder = 'メッセージを入力';
+                    statusDot.style.display = 'none';
+                    headerRightArea.style.display = 'none';
+                    messageArea.innerHTML = `
+                        <div class="loading-overlay" id="historyLoading"><div class="spinner"></div></div>
+                        <div style="text-align:center; padding-top:40px; color:var(--text-sub);">
+                            左側のリストからフレンドまたはグループを選択してチャットを開始してください。
+                        </div>
+                    `;
+                    // リストの最新化
+                    loadGroups();
+                }
+            } catch (err) {
+                showToast("通信エラーが発生しました");
+            }
         }
 
         function copyMyIdFromModal() {
@@ -1045,17 +1238,25 @@
             }
         }
 
-        // グループ作成処理 (新規追加)
+        // グループ作成処理 (機能拡張: 選択されたメンバーを配列で送信)
         async function createGroupFromModal() {
             const inputField = document.getElementById('modalGroupNameInput');
             const groupName = inputField.value.trim();
             if(!groupName) return;
 
+            // チェックボックスから選ばれたIDを収集
+            const checkboxes = document.querySelectorAll('input[name="createGroupMembers"]:checked');
+            const selectedMemberIds = Array.from(checkboxes).map(cb => cb.value);
+
             try {
                 const res = await fetch('/api/groups/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: groupName, creatorId: currentUser.userId })
+                    body: JSON.stringify({ 
+                        name: groupName, 
+                        creatorId: currentUser.userId,
+                        members: selectedMemberIds 
+                    })
                 });
                 const data = await res.json();
                 showToast(data.message);
@@ -1085,6 +1286,7 @@
                 const res = await fetch(`/api/friends?userId=${currentUser.userId}`);
                 const data = await res.json();
                 if (data.success) {
+                    globalFriendsList = data.friends; // グローバルキャッシュを更新
                     chatList.innerHTML = '';
                     if(data.friends.length === 0) {
                         chatList.innerHTML = '<li style="font-size:0.8rem; padding:8px; color:var(--text-sub);">フレンドがいません</li>';
@@ -1098,14 +1300,14 @@
                         li.classList.add('chat-item');
                         li.setAttribute('data-friend-id', f.user_id);
                         if (!isGroupMode && currentChannelName === f.username) li.classList.add('active');
-                        li.onclick = function() { isGroupMode = false; switchChannel(this, f.username, initial, color, f.user_id); };
+                        li.onclick = function() { isGroupMode = false; switchChannel(this, f.username, initial, color, f.user_id, ''); };
                         
                         const badgeCount = unreadCounts[f.user_id] || 0;
                         const badgeHtml = badgeCount > 0 ? `<div class="badge">${badgeCount}</div>` : '';
 
                         li.innerHTML = `
                             <div class="avatar" style="background-color: ${color};">${initial}</div>
-                            <span>${f.username}</span>
+                            <span>${escapeHTML(f.username)}</span>
                             ${badgeHtml}
                         `;
                         chatList.appendChild(li);
@@ -1135,14 +1337,14 @@
                         li.classList.add('chat-item');
                         li.setAttribute('data-group-id', g.group_id);
                         if (isGroupMode && currentRoomId === g.group_id) li.classList.add('active');
-                        li.onclick = function() { isGroupMode = true; switchChannel(this, g.name, initial, color, g.group_id); };
+                        li.onclick = function() { isGroupMode = true; switchChannel(this, g.name, initial, color, g.group_id, g.creator_id); };
                         
                         const badgeCount = unreadCounts[g.group_id] || 0;
                         const badgeHtml = badgeCount > 0 ? `<div class="badge">${badgeCount}</div>` : '';
 
                         li.innerHTML = `
                             <div class="avatar" style="background-color: ${color};">${initial}</div>
-                            <span>${g.name}</span>
+                            <span>${escapeHTML(g.name)}</span>
                             ${badgeHtml}
                         `;
                         groupChatList.appendChild(li);
@@ -1525,16 +1727,21 @@
             sendBtn.disabled = true;
         });
 
-        function switchChannel(element, name, avatarChar, color, targetId) {
+        // 機能拡張: 第6引数に creatorId を追加
+        function switchChannel(element, name, avatarChar, color, targetId, creatorId) {
             currentChannelName = name;
             currentChannelColor = color || '#74c0fc';
             
             if (isGroupMode) {
                 currentFriendId = '';
                 currentRoomId = targetId; // グループIDそのままがルームID
+                currentGroupCreatorId = creatorId; // グループのオーナーIDを設定
+                headerRightArea.style.display = 'block'; // 管理用アイコンを表示
             } else {
                 currentFriendId = targetId;
                 currentRoomId = [currentUser.userId, targetId].sort().join('_');
+                currentGroupCreatorId = '';
+                headerRightArea.style.display = 'none'; // DM時は管理用アイコンを非表示
             }
             
             document.querySelectorAll('.chat-item').forEach(item => item.classList.remove('active'));
