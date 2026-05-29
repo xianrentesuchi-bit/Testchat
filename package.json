@@ -4,10 +4,11 @@
   "description": "Socket.io, Turso, and GAS Integrated Realtime Chat System",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "generate-vapid": "npx web-push generate-vapid-keys"
   },
   "keywords": [],
-  "author": "katuoaikouka",
+  "author": "sennin_sugar",
   "license": "ISC",
   "dependencies": {
     "@libsql/client": "^0.14.0",
