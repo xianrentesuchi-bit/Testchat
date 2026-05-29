@@ -1,6 +1,6 @@
 {
-"name": "SenninChat",
-"short_name": "SenninChat",
+"name": "senninChat",
+"short_name": "senninChat",
 "start_url": "/",
 "display": "standalone",
 "background_color": "#ffffff",
