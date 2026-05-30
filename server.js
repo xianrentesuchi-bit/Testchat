@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const { createClient } = require('@libsql/client');
+const webpush = require('web-push');
 
 const app = express();
 const server = http.createServer(app);
@@ -10,6 +11,13 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
+
+// VAPIDキーの設定（必要に応じて実際の鍵に書き換えてください）
+webpush.setVapidDetails(
+    'mailto:admin@example.com',
+    process.env.VAPID_PUBLIC_KEY || 'あなたの公開鍵',
+    process.env.VAPID_PRIVATE_KEY || 'あなたの秘密鍵'
+);
 
 const GAS_WEBAPP_URL = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwYsl3issVM1SgFyeuRVCITmIfex6kc7lmuiRXVpxbD195ctM0aAsyUxBV_NZxVz9UH/exec";
 const db = createClient({
@@ -58,6 +66,13 @@ async function initDB() {
             group_id TEXT NOT NULL,
             user_id TEXT NOT NULL,
             UNIQUE(group_id, user_id)
+        )
+    `);
+    // 新規追加: 通知保存テーブル
+    await db.execute(`
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+            user_id TEXT PRIMARY KEY,
+            subscription TEXT NOT NULL
         )
     `);
 }
@@ -244,6 +259,33 @@ app.post('/api/groups/delete', async (req, res) => {
     }
 });
 
+// 新規追加: 購読保存API追加
+app.post('/api/save-subscription', async (req, res) => {
+    const { userId, subscription } = req.body;
+    try {
+        await db.execute({
+            sql: `
+                INSERT OR REPLACE INTO
+                push_subscriptions
+                (user_id, subscription)
+                VALUES (?, ?)
+            `,
+            args: [
+                userId,
+                JSON.stringify(subscription)
+            ]
+        });
+        res.json({
+            success: true
+        });
+    } catch(err) {
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
+});
+
 io.on('connection', (socket) => {
     socket.on('join_channel', async (data) => {
         const { myId, friendId, isGroup, groupId } = data;
@@ -297,6 +339,22 @@ io.on('connection', (socket) => {
             };
 
             io.to(roomId).emit('receive_message', broadcastData);
+
+            // メッセージ送信時に通知を追加
+            const subs = await db.execute(
+                "SELECT * FROM push_subscriptions"
+            );
+            for (const row of subs.rows) {
+                const subscription = JSON.parse(row.subscription);
+                await webpush.sendNotification(
+                    subscription,
+                    JSON.stringify({
+                        title: name,
+                        body: text
+                    })
+                ).catch(err => console.error("通知送信失敗:", err));
+            }
+
         } catch (err) {
             console.error("データ保存失敗:", err);
             try {
@@ -305,6 +363,7 @@ io.on('connection', (socket) => {
                     args: [roomId, name, avatar, color, text, timestamp]
                 });
                 const insertedId = Number(fallbackResult.lastInsertRowid);
+                
                 io.to(roomId).emit('receive_message', {
                     id: insertedId,
                     channel: roomId,
@@ -316,6 +375,22 @@ io.on('connection', (socket) => {
                     text: text,
                     timestamp: timestamp
                 });
+
+                // メッセージ送信時に通知を追加（フォールバック時）
+                const subs = await db.execute(
+                    "SELECT * FROM push_subscriptions"
+                );
+                for (const row of subs.rows) {
+                    const subscription = JSON.parse(row.subscription);
+                    await webpush.sendNotification(
+                        subscription,
+                        JSON.stringify({
+                            title: name,
+                            body: text
+                        })
+                    ).catch(err => console.error("通知送信失敗:", err));
+                }
+
             } catch (innerErr) {
                 console.error("最優先DB保存失敗:", innerErr);
             }
